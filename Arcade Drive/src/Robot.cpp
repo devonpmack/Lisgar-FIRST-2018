@@ -23,6 +23,8 @@ class Robot : public frc::IterativeRobot {
 	frc::DifferentialDrive m_robotDrive{m_leftMotor, m_rightMotor};
 	frc::Joystick m_stick{0};
 
+	frc::Spark m_leftArmMotor{2};
+
 public:
 
 	void TeleopInit() {
@@ -32,6 +34,7 @@ public:
 		// drive with arcade style
 		std::cout << m_stick.GetY() << " " << m_stick.GetX() << std::endl;
 		m_robotDrive.ArcadeDrive(m_stick.GetY(), m_stick.GetX());
+		m_leftArmMotor.Set(1.0);
 	}
 };
 
