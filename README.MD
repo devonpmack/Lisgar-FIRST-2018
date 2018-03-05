@@ -4,4 +4,4 @@
 
 ### [Link to Slack](https://lrc2018.slack.com)
 ### [Link to GIT installation instructions](https://docs.google.com/document/d/1B-QdYgLl3qkCxJ6zKceUYscfeaRjOJ0FXHtvyiM4VBg/edit?usp=sharing)
-### The "Arcade Drive" folder is the FIRST Robotics Code
+### The "Gerard" folder is the FIRST Robotics Code

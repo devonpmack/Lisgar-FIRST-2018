@@ -30,6 +30,10 @@
 #define AUTO_FINAL_TIME   1 //seconds
 #define AUTO_TURN_SPEED   0.6
 
+#define AUTO_DRIVE_TIME_R   0.5       // seconds
+#define AUTO_TURN_TIME_R    0.5     // seconds
+#define AUTO_FINAL_TIME_R   2 //seconds
+
 class Robot : public frc::IterativeRobot {
 
 	/*******************
@@ -62,11 +66,8 @@ class Robot : public frc::IterativeRobot {
 
 	// get the game data
 	std::string gameData;
+	int position = 3;
 	char switchSide;
-	bool done1; // this is ghetto but im feeling lazy
-	bool done2;
-	bool done3;
-	bool done4;
 	double servoX = 0.5;
 	double servoY = 0.5;
 public:
@@ -75,22 +76,20 @@ public:
 
 	// runs on robot initialization
 	void RobotInit() {
+		//does nothing? Hopefully you can use this to set the starting position
+		//position = SmartDashboard::GetNumber("Position", 1);
 		// set up camera
-		CameraServer::GetInstance()->StartAutomaticCapture();
-		// get the game data
+		//CameraServer::GetInstance()->StartAutomaticCapture();
 
-
-		done1 = false;
-		done2 = false;
-		done3 = false;
-		done4 = false;
 	}
 
 	void AutonomousInit() {
 		autoTimer->Start();
 		autoTimer->Reset();
 
+		// get the game data
 		gameData = frc::DriverStation::GetInstance().GetGameSpecificMessage();
+
 		// set the switch side (X if not detected)
 		if (gameData.length() > 0) {
 			switchSide = gameData[0];
@@ -98,6 +97,8 @@ public:
 			switchSide = 'X';
 		}
 
+		SmartDashboard::PutString("Sides (closest to farthest)", gameData);
+		SmartDashboard::PutBoolean("Our switch colour is on the LEFT?",switchSide == 'L');
 		if (switchSide == 'l') {
 			switchSide = 'L';
 		}
@@ -120,7 +121,7 @@ public:
 		//m_clawDrive.ArcadeDrive(m_stick2.GetY(), m_stick2.GetX());
 		m_clawDrive.ArcadeDrive(m_stick2->GetZ(), m_stick2->GetX());
 		int pos = m_stick1->GetPOV(0);
-		std::cout << pos << std::endl;
+		//std::cout << pos << std::endl;
 		if (pos != -1) {
 			switch(pos) {
 				case 90:
@@ -145,7 +146,6 @@ public:
 		}
 		sv_1->Set(servoX);
 		sv_2->Set(servoY);
-		//Wait(1);
 
 		// grab the claw with the joystick trigger
 		if (m_stick2->GetRawButton(B_ARM_UP)) {
@@ -161,32 +161,20 @@ public:
 		}
 	}
 
-	/*******************
-	 * AUTONOMOUS COMMANDS
-	 *******************/
+	/***********************/
+	/* AUTONOMOUS COMMANDS */
+	/***********************/
 	void auto_move() {
+		SmartDashboard::PutNumber("Seconds Remaining",15-autoTimer->Get());
 		m_armMotor->SetSpeed(-0.5);
-
-		if (!done1) {
-			std::cout << autoTimer->Get() << std::endl;
-		}
 
 		// drive time
 		if (autoTimer->Get() < AUTO_DRIVE_TIME) {
-			if (!done1) {
-				std::cout << "fwd" << std::endl;
-				done1 = true;
-			}
 			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0); //10.72.67.2 rio ip
 		}
 		// turn time
 		else if (autoTimer->Get() < (AUTO_TURN_TIME + AUTO_DRIVE_TIME)) {
-			if (!done2) {
-				std::cout << "turn" << std::endl;
-				done2 = true;
-			}
 			// Left side
-
 			if (switchSide == 'L') {
 				//Go for it
 				m_robotDrive.ArcadeDrive(-AUTO_TURN_SPEED, AUTO_TURN_SPEED);
@@ -197,27 +185,48 @@ public:
 //			}
 
 		} else if (autoTimer->Get() < (AUTO_TURN_TIME + AUTO_DRIVE_TIME + AUTO_FINAL_TIME)) {
-			if (!done3) {
-				std::cout << "finalfwd" << std::endl;
-				done3 = true;
-			}
 			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0);
 		}
 		// eject time
 		else {
-			if (!done4) {
-				std::cout << "eject" << std::endl;
-				done4 = true;
-			}
 			m_robotDrive.ArcadeDrive(0, 0);
 			if (switchSide == 'L') {
 				m_clawDrive.ArcadeDrive(-1, 0);
 			}
 
 		}
+
+		/*if (position == 1) {
+			// LEFT SIDE AUTO PHASE
+			if (autoTimer->Get() < AUTO_DRIVE_TIME) {
+				m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0); //10.72.67.2 rio ip
+			} else if (autoTimer->Get() < (AUTO_TURN_TIME + AUTO_DRIVE_TIME)) {
+				m_robotDrive.ArcadeDrive(AUTO_TURN_SPEED, -AUTO_TURN_SPEED);
+			} else if (autoTimer->Get() < (AUTO_TURN_TIME + AUTO_DRIVE_TIME + AUTO_FINAL_TIME)) {
+				m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0);
+			} else {
+				m_robotDrive.ArcadeDrive(0, 0);
+				if (switchSide == 'L') {
+					m_clawDrive.ArcadeDrive(-1, 0);
+				}
+			}
+		}
+		if (position == 3) {
+			// RIGHT SIDE AUTO PHASE
+			if (autoTimer->Get() < AUTO_DRIVE_TIME_R) {
+				m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0); //10.72.67.2 rio ip
+			} else if (autoTimer->Get() < (AUTO_TURN_TIME_R + AUTO_DRIVE_TIME_R)) {
+				m_robotDrive.ArcadeDrive(AUTO_TURN_SPEED, -AUTO_TURN_SPEED);
+			} else if (autoTimer->Get() < (AUTO_TURN_TIME_R + AUTO_DRIVE_TIME_R + AUTO_FINAL_TIME_R)) {
+				m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0);
+			} else {
+				m_robotDrive.ArcadeDrive(0, 0);
+				if (switchSide == 'R') {
+					m_clawDrive.ArcadeDrive(-1, 0);
+				}
+			}
+		} */
 	}
-
-
 };
 
 START_ROBOT_CLASS(Robot)
