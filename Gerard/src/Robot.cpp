@@ -97,10 +97,11 @@ public:
 
 		SmartDashboard::PutString("Sides (closest to farthest)", gameData);
 		SmartDashboard::PutBoolean("Our switch colour is on the LEFT?",switchSide == 'L');
+		auto_move();
 
 	}
 	void AutonomousPeriodic() {
-		auto_move();
+		SmartDashboard::PutNumber("Seconds Remaining",15-autoTimer->Get());
 	}
 
 
@@ -154,41 +155,59 @@ public:
 		}
 	}
 
-	/***********************/
-	/* AUTONOMOUS COMMANDS */
-	/***********************/
+	/***********************
+	 * AUTONOMOUS COMMANDS *
+	 ***********************/
 	void auto_move() {
-		SmartDashboard::PutNumber("Seconds Remaining",15-autoTimer->Get());
+
+
 		m_armMotor->SetSpeed(-0.5);
 
 		if (position == 1) {
-			// LEFT SIDE AUTO PHASE
 
-			// move forward for AUTO_DRIVE_TIME seconds
+			// move forward
 			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0); //10.72.67.2 rio ip
 			frc::Wait(AUTO_DRIVE_TIME);
+
+			// if switch is not on the left, stop
+			if (switchSide != 'L') {
+				m_robotDrive.ArcadeDrive(0, 0);
+				return;
+			}
+
+			// turn left
 			m_robotDrive.ArcadeDrive(0, -AUTO_TURN_SPEED);
 			frc::Wait(AUTO_DRIVE_TIME);
+
+			// move forward
 			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0);
 			frc::Wait(AUTO_DRIVE_TIME);
+
+			// drop block
+			m_clawDrive.ArcadeDrive(-1, 0);
+			frc::Wait(AUTO_DRIVE_TIME);
+
+			// stop
 			m_robotDrive.ArcadeDrive(0, 0);
-			frc::Wait(AUTO_DRIVE_TIME);
-			if (switchSide == 'L') {
-				m_clawDrive.ArcadeDrive(-1, 0);
-			}
-			frc::Wait(AUTO_DRIVE_TIME);
+			return;
+
 		}
 
 		if (position == 3) {
+
 			// RIGHT SIDE AUTO PHASE
 			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0); //10.72.67.2 rio ip
 			frc::Wait(AUTO_DRIVE_TIME);
+
 			m_robotDrive.ArcadeDrive(0, -AUTO_TURN_SPEED);
 			frc::Wait(AUTO_DRIVE_TIME);
+
 			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0);
 			frc::Wait(AUTO_DRIVE_TIME);
+
 			m_robotDrive.ArcadeDrive(0, 0);
 			frc::Wait(AUTO_DRIVE_TIME);
+
 			if (switchSide == 'R') {
 				m_clawDrive.ArcadeDrive(-1, 0);
 			}
@@ -196,22 +215,14 @@ public:
 		}
 
 		if (position == 2) {
+
 			if (switchSide == 'R') {
 				m_robotDrive.ArcadeDrive(0, AUTO_TURN_SPEED);
 			}
 			if (switchSide == 'L') {
 				m_robotDrive.ArcadeDrive(0,-AUTO_TURN_SPEED);
 			}
-			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0); //10.72.67.2 rio ip
-			frc::Wait(AUTO_DRIVE_TIME);
-			m_robotDrive.ArcadeDrive(0, -AUTO_TURN_SPEED);
-			frc::Wait(AUTO_DRIVE_TIME);
-			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0);
-			frc::Wait(AUTO_DRIVE_TIME);
-			m_robotDrive.ArcadeDrive(0, 0);
-			frc::Wait(AUTO_DRIVE_TIME);
-			m_clawDrive.ArcadeDrive(-1, 0);
-			frc::Wait(AUTO_DRIVE_TIME);
+
 		}
 	}
 };
