@@ -114,6 +114,9 @@ public:
 		// drive the claws with the second joystick
 		//m_clawDrive.ArcadeDrive(m_stick2.GetY(), m_stick2.GetX());
 		m_clawDrive.ArcadeDrive(m_stick2->GetZ(), m_stick2->GetX());
+
+		std::cout << m_stick1->GetRawAxis(3) << std::endl;
+
 		int pos = m_stick1->GetPOV(0);
 		//std::cout << pos << std::endl;
 		if (pos != -1) {
@@ -195,33 +198,81 @@ public:
 
 		if (position == 3) {
 
-			// RIGHT SIDE AUTO PHASE
+			// move forward
 			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0); //10.72.67.2 rio ip
 			frc::Wait(AUTO_DRIVE_TIME);
 
-			m_robotDrive.ArcadeDrive(0, -AUTO_TURN_SPEED);
+			// if switch is not on the right, stop
+			if (switchSide != 'R') {
+				m_robotDrive.ArcadeDrive(0, 0);
+				return;
+			}
+
+			// turn right
+			m_robotDrive.ArcadeDrive(0, AUTO_TURN_SPEED);
 			frc::Wait(AUTO_DRIVE_TIME);
 
+			// move forward
 			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0);
 			frc::Wait(AUTO_DRIVE_TIME);
 
-			m_robotDrive.ArcadeDrive(0, 0);
+			// drop block
+			m_clawDrive.ArcadeDrive(-1, 0);
 			frc::Wait(AUTO_DRIVE_TIME);
 
-			if (switchSide == 'R') {
-				m_clawDrive.ArcadeDrive(-1, 0);
-			}
-			frc::Wait(AUTO_DRIVE_TIME);
+			// stop
+			m_robotDrive.ArcadeDrive(0, 0);
+			return;
+
 		}
 
 		if (position == 2) {
 
+			// first turn
 			if (switchSide == 'R') {
 				m_robotDrive.ArcadeDrive(0, AUTO_TURN_SPEED);
 			}
 			if (switchSide == 'L') {
 				m_robotDrive.ArcadeDrive(0,-AUTO_TURN_SPEED);
 			}
+			frc::Wait(AUTO_DRIVE_TIME);
+
+			// move forward
+			m_robotDrive.ArcadeDrive(AUTO_TURN_SPEED, 0);
+
+			// second turn
+			switch (switchSide) {
+				case 'R':
+					m_robotDrive.ArcadeDrive(0, -AUTO_TURN_SPEED);
+					break;
+				case 'L':
+					m_robotDrive.ArcadeDrive(0, AUTO_TURN_SPEED);
+					break;
+			}
+			frc::Wait(AUTO_DRIVE_TIME);
+
+			// move forward
+			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0);
+			frc::Wait(AUTO_DRIVE_TIME);
+
+			// third turn
+			switch (switchSide) {
+				case 'R':
+					m_robotDrive.ArcadeDrive(0, -AUTO_TURN_SPEED);
+					break;
+				case 'L':
+					m_robotDrive.ArcadeDrive(0, AUTO_TURN_SPEED);
+					break;
+			}
+			frc::Wait(AUTO_DRIVE_TIME);
+
+			// drop block
+			m_clawDrive.ArcadeDrive(-1, 0);
+			frc::Wait(AUTO_DRIVE_TIME);
+
+			// stop
+			m_robotDrive.ArcadeDrive(0, 0);
+			return;
 
 		}
 	}
