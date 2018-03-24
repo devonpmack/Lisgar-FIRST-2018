@@ -8,39 +8,46 @@
 #include "WPILib.h"
 #include <iostream>
 
-// set pins
-#define PIN_L_WHEEL       1
-#define PIN_R_WHEEL       0
-#define PIN_L_CLAW        2
-#define PIN_R_CLAW        3
-#define PIN_ARM           4
+#define LEFT                      0
+#define CENTER                    1
+#define RIGHT                     2
 
-#define PIN_SERVO1        5
-#define PIN_SERVO2        6
+#define LONG                      0
+#define SHORT                     1
+#define VERY_SHORT                2
 
-#define B_ARM_UP          2
-#define B_ARM_DOWN        1
-#define B_RESETCAM        7
+// pins
+#define PIN_L_WHEEL               1
+#define PIN_R_WHEEL               0
+#define PIN_L_CLAW                2
+#define PIN_R_CLAW                3
+#define PIN_ARM                   4
 
-#define AUTO_DRIVE_TIME   2.0       // seconds
-#define AUTO_DRIVE_SPEED  0.7
-#define AUTO_TURN_TIME    0.5     // seconds
-#define AUTO_FINAL_TIME   1 //seconds
-#define AUTO_TURN_SPEED   0.6
+// buttons and joysticks
+#define J_DRIVE                   0
+#define J_CLAW                    1
+#define B_ARM_UP                  2
+#define B_ARM_DOWN                1
 
-#define AUTO_DRIVE_TIME_R   0.5       // seconds
-#define AUTO_TURN_TIME_R    0.5     // seconds
-#define AUTO_FINAL_TIME_R   2 //seconds
+// power for turning and driving
+#define DRIVE_POWER               0
+#define TURN_POWER                0
+
+#define ARM_UP_POWER              0
+#define ARM_DOWN_POWER            0
+
+// autonomous timing
+#define AUTO_DRIVESHORT_TIME      0
+#define AUTO_DRIVELONG_TIME       0
+#define AUTO_DRIVEVERYSHORT_TIME  0
+#define AUTO_TURN_TIME            0
+#define AUTO_EJECT_TIME           0
 
 class Robot : public frc::IterativeRobot {
 
-	/*******************
-	 * CREATE COMPONENTS
-	 *******************/
-
 	// set controller
-	frc::Joystick *m_stick1 = new Joystick(0);
-	frc::Joystick *m_stick2 = new Joystick(1);
+	frc::Joystick *m_driveStick = new Joystick(J_DRIVE);
+	frc::Joystick *m_clawStick = new Joystick(J_CLAW);
 
 	// set wheel controllers
 	frc::Spark m_lWheelMotor { PIN_L_WHEEL };
@@ -51,9 +58,6 @@ class Robot : public frc::IterativeRobot {
 	frc::Spark m_lClawMotor { PIN_L_CLAW };
 	frc::Spark m_rClawMotor { PIN_R_CLAW };
 	frc::DifferentialDrive m_clawDrive { m_lClawMotor, m_rClawMotor };
-
-	frc::Servo *sv_1 = new Servo(PIN_SERVO1);
-	frc::Servo *sv_2 = new Servo(PIN_SERVO2);
 
 	// set arm controller
 	frc::Jaguar *m_armMotor = new Jaguar(PIN_ARM);
@@ -66,8 +70,70 @@ class Robot : public frc::IterativeRobot {
 	std::string gameData;
 	int position = 3;
 	char switchSide;
-	double servoX = 0.5;
-	double servoY = 0.5;
+
+	// drive with joystick
+	void wheel_drive() {
+		m_robotDrive.ArcadeDrive(m_driveStick->GetY() * DRIVE_POWER, m_driveStick.GetX() * TURN_POWER);
+	}
+	// drive with speed variables
+	void wheel_drive(double y, double x) {
+		m_robot.ArcadeDrive(y * DRIVE_POWER, x * TURN_POWER);
+	}
+	// stop wheels
+	void wheel_stop() {
+		wheel_drive(0, 0);
+	}
+
+	// turn claws with joystick
+	void claw_drive() {
+		m_clawDrive.ArcadeDrive(m_clawStick->GetY(), m_clawStick->GetX());
+	}
+	// turn claws without joystick
+	void claw_drive(double y, double x) {
+		m_clawDrive.ArcadeDrive(y, x);
+	}
+	// stop claws
+	void claw_stop() {
+		claw_drive(0, 0);
+	}
+
+	// autonomous drive (time = time driven, dist = LONG or SHORT)
+	void auto_drive(int dist) {
+		wheel_drive(AUTO_DRIVE_SPEED, 0);
+		// I an so sorry for writing this.
+		frc::Wait((dist == LONG) ? AUTO_DRIVELONG_TIME : ((dist == SHORT) ? AUTO_DRIVESHORT_TIME : AUTO_DRIVEVERYSHORT_TIME));
+	}
+
+	// autonomous turn (dir = LEFT or RIGHT)
+	void auto_turn(int dir) {
+		wheel_drive(0, AUTO_TURN_SPEED * ((dir == LEFT) ? -1 : 1));
+		frc::Wait(AUTO_TURN_TIME);
+	}
+
+	// move arm up (button = requires button press)
+	void arm_up(bool button) {
+		// return false on failure
+		if (button && m_clawStick->GetRawButton(B_ARM_UP))
+			return false;
+		// return true on success
+		m_armMotor->SetSpeed(-ARM_UP_POWER);
+		return true;
+	}
+	// move arm down (button = requires button press)
+	void arm_down(bool button) {
+		// return false on failure
+		if (button && m_clawStick->GetRawButton(B_ARM_DOWN))
+			return false;
+		// return true on success
+		m_armMotor->SetSpeed(ARM_DOWN_POWER);
+		return true;
+	}
+
+	// stop the arm
+	void arm_stop() {
+		m_armMotor->SetSpeed(0);
+	}
+
 public:
 
 	Robot() {}
@@ -108,172 +174,55 @@ public:
 	// loops on teleop mode
 	void TeleopPeriodic() {
 
-		// drive the robot with the first joystick
-		m_robotDrive.ArcadeDrive(-m_stick1->GetY(), m_stick1->GetX() * 0.7);
+		// drive robot
+		wheelDrive();
 
-		// drive the claws with the second joystick
-		//m_clawDrive.ArcadeDrive(m_stick2.GetY(), m_stick2.GetX());
-		m_clawDrive.ArcadeDrive(m_stick2->GetZ(), m_stick2->GetX());
+		// mvoe claws
+		clawDrive();
 
-		std::cout << m_stick1->GetRawAxis(3) << std::endl;
-
-		int pos = m_stick1->GetPOV(0);
-		//std::cout << pos << std::endl;
-		if (pos != -1) {
-			switch(pos) {
-				case 90:
-					servoX = 0.65;
-					break;
-				case 180:
-					servoY = 0.65;
-					break;
-				case 270:
-					servoX = 0.35;
-					break;
-				case 0:
-					servoY = 0.35;
-					break;
-				default:
-					break;
+		// move arms
+		if (!arm_up(true)) {
+			if (!arm_down(true)) {
+				arm_stop();
 			}
 		}
-		if (m_stick1->GetRawButton(B_RESETCAM)) {
-			servoX = 0.5;
-			servoY = 0.5;
-		}
-		sv_1->Set(servoX);
-		sv_2->Set(servoY);
 
-		// grab the claw with the joystick trigger
-		if (m_stick2->GetRawButton(B_ARM_UP)) {
-			m_armMotor->SetSpeed(-0.6);
-		}
-		// eject the claw with the joystick thumb button
-		else if (m_stick2->GetRawButton(B_ARM_DOWN)) {
-			m_armMotor->SetSpeed(0.4);
-		}
-		// stop the claw if the claw isn't moving
-		else {
-			m_armMotor->SetSpeed(-0.1);
-		}
+		std::cout << m_driveStick->GetRawAxis(3) << std::endl;
 	}
 
-	/***********************
-	 * AUTONOMOUS COMMANDS *
-	 ***********************/
 	void auto_move() {
 
+		if (position == LEFT || position == RIGHT) {
 
-		m_armMotor->SetSpeed(-0.5);
+			// move forward (long)
+			auto_drive(LONG);
 
-		if (position == 1) {
-
-			// move forward
-			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0); //10.72.67.2 rio ip
-			frc::Wait(AUTO_DRIVE_TIME);
-
-			// if switch is not on the left, stop
-			if (switchSide != 'L') {
-				m_robotDrive.ArcadeDrive(0, 0);
+			// if switch is not on the position side, stop
+			if (switchSide != ((position == LEFT) ? 'L' : 'R')) {
+				wheel_stop();
 				return;
 			}
 
-			// turn left
-			m_robotDrive.ArcadeDrive(0, -AUTO_TURN_SPEED);
-			frc::Wait(AUTO_DRIVE_TIME);
-
-			// move forward
-			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0);
-			frc::Wait(AUTO_DRIVE_TIME);
+			// turn in the direction opposite of the side of the robot (right if position == LEFT, left if position == RIGHT)
+			auto_turn(position);
 
 			// drop block
-			m_clawDrive.ArcadeDrive(-1, 0);
+			claw_drive(1, 0);
 			frc::Wait(AUTO_DRIVE_TIME);
 
 			// stop
-			m_robotDrive.ArcadeDrive(0, 0);
+			claw_stop();
 			return;
 
 		}
 
-		if (position == 3) {
+		if (position == CENTER) {
 
-			// move forward
-			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0); //10.72.67.2 rio ip
-			frc::Wait(AUTO_DRIVE_TIME);
+			// turn in the direction of the side of the switch (right if switchSide == RIGHT, left if switchSide == LEFT)
+			wheel_drive(0, AUTO_TURN_SPEED * ((switchSide == LEFT) ? -1 : 1));
+			frc::Wait(AUTO_TURN_TIME);
 
-			// if switch is not on the right, stop
-			if (switchSide != 'R') {
-				m_robotDrive.ArcadeDrive(0, 0);
-				return;
-			}
-
-			// turn right
-			m_robotDrive.ArcadeDrive(0, AUTO_TURN_SPEED);
-			frc::Wait(AUTO_DRIVE_TIME);
-
-			// move forward
-			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0);
-			frc::Wait(AUTO_DRIVE_TIME);
-
-			// drop block
-			m_clawDrive.ArcadeDrive(-1, 0);
-			frc::Wait(AUTO_DRIVE_TIME);
-
-			// stop
-			m_robotDrive.ArcadeDrive(0, 0);
-			return;
-
-		}
-
-		if (position == 2) {
-
-			// first turn
-			if (switchSide == 'R') {
-				m_robotDrive.ArcadeDrive(0, AUTO_TURN_SPEED);
-			}
-			if (switchSide == 'L') {
-				m_robotDrive.ArcadeDrive(0,-AUTO_TURN_SPEED);
-			}
-			frc::Wait(AUTO_DRIVE_TIME);
-
-			// move forward
-			m_robotDrive.ArcadeDrive(AUTO_TURN_SPEED, 0);
-
-			// second turn
-			switch (switchSide) {
-				case 'R':
-					m_robotDrive.ArcadeDrive(0, -AUTO_TURN_SPEED);
-					break;
-				case 'L':
-					m_robotDrive.ArcadeDrive(0, AUTO_TURN_SPEED);
-					break;
-			}
-			frc::Wait(AUTO_DRIVE_TIME);
-
-			// move forward
-			m_robotDrive.ArcadeDrive(AUTO_DRIVE_SPEED, 0);
-			frc::Wait(AUTO_DRIVE_TIME);
-
-			// third turn
-			switch (switchSide) {
-				case 'R':
-					m_robotDrive.ArcadeDrive(0, -AUTO_TURN_SPEED);
-					break;
-				case 'L':
-					m_robotDrive.ArcadeDrive(0, AUTO_TURN_SPEED);
-					break;
-			}
-			frc::Wait(AUTO_DRIVE_TIME);
-
-			// drop block
-			m_clawDrive.ArcadeDrive(-1, 0);
-			frc::Wait(AUTO_DRIVE_TIME);
-
-			// stop
-			m_robotDrive.ArcadeDrive(0, 0);
-			return;
-
+			wheel_drive()
 		}
 	}
 };
