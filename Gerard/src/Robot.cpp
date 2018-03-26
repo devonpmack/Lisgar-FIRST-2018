@@ -22,6 +22,7 @@
 #define PIN_L_CLAW                2
 #define PIN_R_CLAW                3
 #define PIN_ARM                   4
+#define PIN_AUTO_SWITCH           5
 
 // buttons and joysticks
 #define J_DRIVE                   0
@@ -30,18 +31,20 @@
 #define B_ARM_DOWN                1
 
 // power for turning and driving
-#define DRIVE_POWER               0
-#define TURN_POWER                0
+#define DRIVE_POWER               0.0
+#define TURN_POWER                0.0
+#define ARM_UP_POWER              0.0
+#define ARM_DOWN_POWER            0.0
 
-#define ARM_UP_POWER              0
-#define ARM_DOWN_POWER            0
+#define AUTO_DRIVE_POWER          0.0
+#define AUTO_TURN_POWER           0.0
 
 // autonomous timing
-#define AUTO_DRIVESHORT_TIME      0
-#define AUTO_DRIVELONG_TIME       0
-#define AUTO_DRIVEVERYSHORT_TIME  0
-#define AUTO_TURN_TIME            0
-#define AUTO_EJECT_TIME           0
+#define AUTO_DRIVESHORT_TIME      0.0
+#define AUTO_DRIVELONG_TIME       0.0
+#define AUTO_DRIVEVERYSHORT_TIME  0.0
+#define AUTO_TURN_TIME            0.0
+#define AUTO_EJECT_TIME           0.0
 
 class Robot : public frc::IterativeRobot {
 
@@ -65,19 +68,22 @@ class Robot : public frc::IterativeRobot {
 	// set the autonomous mode timer
 	frc::Timer *autoTimer = new Timer();
 
+	// auto swtich
+	frc::DigitalInput autoSwitch = new DigitalInput(PIN_AUTO_SWITCH);
 
 	// get the game data
 	std::string gameData;
 	int position = 3;
 	char switchSide;
+	float turn_multiplier = 1;
 
 	// drive with joystick
 	void wheel_drive() {
-		m_robotDrive.ArcadeDrive(m_driveStick->GetY() * DRIVE_POWER, m_driveStick.GetX() * TURN_POWER);
+		m_robotDrive.ArcadeDrive(m_driveStick->GetY() * DRIVE_POWER, m_driveStick->GetX() * TURN_POWER);
 	}
 	// drive with speed variables
 	void wheel_drive(double y, double x) {
-		m_robot.ArcadeDrive(y * DRIVE_POWER, x * TURN_POWER);
+		m_robotDrive.ArcadeDrive(y * DRIVE_POWER, x * TURN_POWER);
 	}
 	// stop wheels
 	void wheel_stop() {
@@ -99,27 +105,27 @@ class Robot : public frc::IterativeRobot {
 
 	// autonomous drive (time = time driven, dist = LONG or SHORT)
 	void auto_drive(int dist) {
-		wheel_drive(AUTO_DRIVE_SPEED, 0);
+		wheel_drive(AUTO_DRIVE_POWER, 0);
 		// I am so sorry for writing this.
 		frc::Wait((dist == LONG) ? AUTO_DRIVELONG_TIME : ((dist == SHORT) ? AUTO_DRIVESHORT_TIME : AUTO_DRIVEVERYSHORT_TIME));
 	}
 
 	// autonomous turn (dir = LEFT or RIGHT)
 	void auto_turn(int dir) {
-		wheel_drive(0, AUTO_TURN_SPEED * ((dir == LEFT) ? -1 : 1));
+		wheel_drive(0, AUTO_TURN_POWER * ((dir == LEFT) ? -1 : 1));
 		frc::Wait(AUTO_TURN_TIME);
 	}
 
 	// move arm up (button = requires button press)
-	void arm_up(bool button) {
-		if (button && m_clawStick->GetRawButton(B_ARM_UP))
+	bool arm_up(bool button) {
+		if (button && !m_clawStick->GetRawButton(B_ARM_UP))
 			return false;
 		m_armMotor->SetSpeed(-ARM_UP_POWER);
 		return true;
 	}
 	// move arm down (button = requires button press)
-	void arm_down(bool button) {
-		if (button && m_clawStick->GetRawButton(B_ARM_DOWN))
+	bool arm_down(bool button) {
+		if (button && !m_clawStick->GetRawButton(B_ARM_DOWN))
 			return false;
 		m_armMotor->SetSpeed(ARM_DOWN_POWER);
 		return true;
@@ -141,6 +147,8 @@ public:
 		// set up camera
 		//CameraServer::GetInstance()->StartAutomaticCapture();
 
+
+
 	}
 
 	void AutonomousInit() {
@@ -159,7 +167,12 @@ public:
 
 		SmartDashboard::PutString("Sides (closest to farthest)", gameData);
 		SmartDashboard::PutBoolean("Our switch colour is on the LEFT?",switchSide == 'L');
-		auto_move();
+		bool do_auto =/* autoSwitch.Get() */ true;
+		if (do_auto) {
+			auto_move();
+		} else {
+			auto_straight();
+		}
 
 	}
 	void AutonomousPeriodic() {
@@ -171,10 +184,10 @@ public:
 	void TeleopPeriodic() {
 
 		// drive robot
-		wheelDrive();
+		wheel_drive();
 
-		// mvoe claws
-		clawDrive();
+		// move claws
+		claw_drive();
 
 		// move arms
 		if (!arm_up(true)) {
@@ -184,6 +197,12 @@ public:
 		}
 
 		std::cout << m_driveStick->GetRawAxis(3) << std::endl;
+		//turn_multiplier = m_driveStick->GetRawAxis(3);
+	}
+
+	void auto_straight() {
+		auto_drive(LONG);
+		wheel_stop();
 	}
 
 	void auto_move() {
