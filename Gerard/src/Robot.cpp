@@ -31,10 +31,13 @@
 #define B_ARM_DOWN                1
 
 // power for turning and driving
-#define DRIVE_POWER               0.0
-#define TURN_POWER                0.0
-#define ARM_UP_POWER              0.0
-#define ARM_DOWN_POWER            0.0
+#define DRIVE_POWER               1.0
+#define TURN_POWER                0.8
+#define ARM_UP_POWER              1.0
+#define ARM_DOWN_POWER            0.4
+#define ARM_NEUTRAL_POWER         0.15
+#define CLAW_POWER                1.0
+
 
 #define AUTO_DRIVE_POWER          0.0
 #define AUTO_TURN_POWER           0.0
@@ -69,7 +72,7 @@ class Robot : public frc::IterativeRobot {
 	frc::Timer *autoTimer = new Timer();
 
 	// auto swtich
-	frc::DigitalInput autoSwitch = new DigitalInput(PIN_AUTO_SWITCH);
+	//frc::DigitalInput autoSwitch = new DigitalInput(PIN_AUTO_SWITCH);
 
 	// get the game data
 	std::string gameData;
@@ -79,11 +82,11 @@ class Robot : public frc::IterativeRobot {
 
 	// drive with joystick
 	void wheel_drive() {
-		m_robotDrive.ArcadeDrive(m_driveStick->GetY() * DRIVE_POWER, m_driveStick->GetX() * TURN_POWER);
+		m_robotDrive.ArcadeDrive(-m_driveStick->GetY() * DRIVE_POWER, m_driveStick->GetX() * TURN_POWER);
 	}
 	// drive with speed variables
 	void wheel_drive(double y, double x) {
-		m_robotDrive.ArcadeDrive(y * DRIVE_POWER, x * TURN_POWER);
+		m_robotDrive.ArcadeDrive(-y * DRIVE_POWER, x * TURN_POWER);
 	}
 	// stop wheels
 	void wheel_stop() {
@@ -92,11 +95,11 @@ class Robot : public frc::IterativeRobot {
 
 	// turn claws with joystick
 	void claw_drive() {
-		m_clawDrive.ArcadeDrive(m_clawStick->GetY(), m_clawStick->GetX());
+		m_clawDrive.ArcadeDrive(m_clawStick->GetZ() * CLAW_POWER, m_clawStick->GetX() * CLAW_POWER);
 	}
 	// turn claws without joystick
 	void claw_drive(double y, double x) {
-		m_clawDrive.ArcadeDrive(y, x);
+		m_clawDrive.ArcadeDrive(y * CLAW_POWER, x * CLAW_POWER);
 	}
 	// stop claws
 	void claw_stop() {
@@ -133,7 +136,7 @@ class Robot : public frc::IterativeRobot {
 
 	// stop the arm
 	void arm_stop() {
-		m_armMotor->SetSpeed(0);
+		m_armMotor->SetSpeed(-ARM_NEUTRAL_POWER);
 	}
 
 public:
@@ -183,6 +186,8 @@ public:
 	// loops on teleop mode
 	void TeleopPeriodic() {
 
+		std::cout << "true" << std::endl;
+
 		// drive robot
 		wheel_drive();
 
@@ -196,7 +201,7 @@ public:
 			}
 		}
 
-		std::cout << m_driveStick->GetRawAxis(3) << std::endl;
+		//std::cout << m_driveStick->GetRawAxis(3) << std::endl;
 		//turn_multiplier = m_driveStick->GetRawAxis(3);
 	}
 
