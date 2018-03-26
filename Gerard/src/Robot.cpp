@@ -100,7 +100,7 @@ class Robot : public frc::IterativeRobot {
 	// autonomous drive (time = time driven, dist = LONG or SHORT)
 	void auto_drive(int dist) {
 		wheel_drive(AUTO_DRIVE_SPEED, 0);
-		// I an so sorry for writing this.
+		// I am so sorry for writing this.
 		frc::Wait((dist == LONG) ? AUTO_DRIVELONG_TIME : ((dist == SHORT) ? AUTO_DRIVESHORT_TIME : AUTO_DRIVEVERYSHORT_TIME));
 	}
 
@@ -112,19 +112,15 @@ class Robot : public frc::IterativeRobot {
 
 	// move arm up (button = requires button press)
 	void arm_up(bool button) {
-		// return false on failure
 		if (button && m_clawStick->GetRawButton(B_ARM_UP))
 			return false;
-		// return true on success
 		m_armMotor->SetSpeed(-ARM_UP_POWER);
 		return true;
 	}
 	// move arm down (button = requires button press)
 	void arm_down(bool button) {
-		// return false on failure
 		if (button && m_clawStick->GetRawButton(B_ARM_DOWN))
 			return false;
-		// return true on success
 		m_armMotor->SetSpeed(ARM_DOWN_POWER);
 		return true;
 	}
@@ -204,11 +200,15 @@ public:
 			}
 
 			// turn in the direction opposite of the side of the robot (right if position == LEFT, left if position == RIGHT)
-			auto_turn(position);
+			auto_turn((position == LEFT) ? RIGHT : LEFT);
+
+			// drive towards the block
+			auto_drive(VERY_SHORT);
 
 			// drop block
+			wheel_stop();
 			claw_drive(1, 0);
-			frc::Wait(AUTO_DRIVE_TIME);
+			frc::Wait(AUTO_EJECT_TIME);
 
 			// stop
 			claw_stop();
@@ -219,10 +219,9 @@ public:
 		if (position == CENTER) {
 
 			// turn in the direction of the side of the switch (right if switchSide == RIGHT, left if switchSide == LEFT)
-			wheel_drive(0, AUTO_TURN_SPEED * ((switchSide == LEFT) ? -1 : 1));
-			frc::Wait(AUTO_TURN_TIME);
+			auto_turn(position);
 
-			wheel_drive()
+
 		}
 	}
 };
